@@ -16,8 +16,6 @@ typedef struct {
 
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
-  int return_code;
-
   if (argc > 1) {
     char *filename = argv[1];
     FILE* ptr = fopen(filename, "r");
@@ -31,33 +29,32 @@ int main(int argc, char *argv[]) {
     while (!feof(ptr)) {
       getline(&buffer, &size, ptr);
       if (strlen(buffer) == 0) continue;
-      int args_num = parseInput(trim(buffer));
+      //int args_num = parseInput(trim(buffer));
       free(buffer);
     }
     fclose(ptr);
   } else {
     size_t size = (BUFF_SIZE * sizeof(char));
     char *buffer = malloc(size);
-
-    char *exit_str = "exit";
     while (1) {
       printf("wish> ");
       getline(&buffer, &size, stdin);
-      int args_num = parseInput(trim(buffer));
+      printf("%s\n", trim(buffer));
+      //int args_num = parseInput(trim(buffer));
       free(buffer);
 
-      int *args = parseInput(buffer);
-      for (int i = 0; i < 2; i++) printf("a1 %s\n", *args[1]);
+      //int *args = parseInput(buffer);
     }
   }
   return (0);
 }
 
 char *trim(char *buffer) {
-  return buffer[strcspn(buffer, "\r\n")] = 0;
+  buffer[strcspn(buffer, "\r\n")] = 0;
+  return buffer;
 };
 
-void *parseInput(void *arg) {
+/*void *parseInput(void *arg) {
   char *input = strdup(arg);
   char *chunk;
   char *args[BUFF_SIZE];
@@ -121,4 +118,4 @@ void executeCommands(char *args[], int args_num, FILE *out) {
       printError();
       exit(1);
     }
-}
+}*/
