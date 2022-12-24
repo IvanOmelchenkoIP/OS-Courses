@@ -6,16 +6,24 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
-size_t buffer_size = (BUFF_SIZE * sizeof(char));
+char *buffer = NULL;
 char *initBuffer() {
   char *buffer = malloc(buffer_size);
+  if (buffer == NULL) {
+    printError();
+    exit(1);
+  }
   return buffer;
 }
+
 int path_ind = 1;
 char **paths = NULL;
 void initPaths() {
   paths = malloc(BUFF_SIZE * sizeof(char *));
-  if (paths == NULL) exit(1);
+  if (paths == NULL) {
+    printError();
+    exit(1);
+  }
   for (int i = 0; i < BUFF_SIZE; i++) paths[i] = (char *)malloc(sizeof(char *));
   paths[0] ="/bin";
 }
@@ -26,6 +34,7 @@ int builtInCommand(char *args[], int args_num);
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
   initPaths();
+  size_t buffer_size = (BUFF_SIZE * sizeof(char));
   char *buffer = initBuffer();
   if (argc > 1) {
     char *filename = argv[1];
@@ -209,5 +218,6 @@ int builtInCommand(char *args[], int args_num) {
 }
 
 void clean() {
+  free(buffer);
   free(paths);
 }
