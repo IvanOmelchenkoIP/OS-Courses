@@ -31,6 +31,8 @@ void initPaths() {
   paths[0] ="/bin";
 }
 
+char *trim_spaces(char *buffer);
+void parallelRoutines(char* buffer);
 int parseCommands(char *args[], int args_num);
 int builtInCommand(char *args[], int args_num);
 
@@ -51,11 +53,14 @@ int main(int argc, char *argv[]) {
   }
 
   if (flag_interractive) printf("wish> ");
-
   while(1) {
     int length = getfile(&buffer, &buffer_size, input_ptr);
     if (length == 0) continue;
-    if (parseInput(trim(buffer)) != NULL) {
+    if (feof(input_ptr)) {
+      clean();
+      return (0);
+    }
+    if (parseInput(trim_spaces(buffer)) != NULL) {
       clean();
       printError();
       exit(1);
@@ -64,10 +69,14 @@ int main(int argc, char *argv[]) {
   return (0);
 }
 
-char *trim(char *buffer) {
+char *trim_spaces(char *buffer) {
   buffer[strcspn(buffer, "\r\n")] = 0;
   return buffer;
 };
+
+void parallelRoutines(char* buffer) {
+
+}
 
 void *parseInput(void *arg) {
   char *input = strdup(arg);
