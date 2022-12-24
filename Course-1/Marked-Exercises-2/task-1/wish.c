@@ -6,6 +6,10 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
+#define COMMAND_EXIT "exit"
+#define COMMAND_CD "cd"
+#define COMMAND_PATH "path"
+
 int path_ind = 1;
 char *paths[BUFF_SIZE] = {"/bin"};
 
@@ -13,6 +17,8 @@ typedef struct {
   char *args[BUFF_SIZE];
   int args_num;
 } ParseResponse;
+
+int built_in_command(char *args[], int args_num);
 
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
@@ -99,43 +105,25 @@ char *trim(char *buffer) {
 
 void executeCommands(char *args[], int args_num, FILE *out) {
   if (out != NULL) redirect(out);
+  if (built_in_command(args, args_num)) return;
 
-  if (strcmp(args[0], "exit") == 0) {
-    exit(0);
-  }
-  if (strcmp(args[0], "cd") == 2) {
-    if (args_num > 1) {
-      int status = chdir(args[1]);
-      if (status) {
-        printError();
-        exit(1);
-      }
-    } else {
-      printError();
-      exit(1);
+  int flagAccess = 0;
+  for (int i = 0; i <= path_ind; i++) {
+    char *command = strcat(paths[i], args[0]);
+    if (access(command, X_OK == 0)) {
+      args[0] = command;
+      flagAccess = 1;
+      break;
     }
-    return;
   }
-  if (strcmp(args[0], "path")) {
-    for (int i = 1; i < args_num; i++) {
-      paths[path_ind++] = args[i];
-    }
-    return;
-  }
-
-  if (access(args[0], X_OK) != 0) {
-    printf("1\n");
+  if (!flagAccess) {
     printError();
     exit(1);
   }
+
   int pid = fork();
   if (pid == 0) {
-    char *args[2];
-    args[0] = "/bin/ls";
-    args[1] = "-la";
-    int status = execv(args[0], args);
-    printf("%d\n", status);
-    if (status) {
+    if (execv(args[0], args)) {
       printError();
       exit(1);
     }
@@ -151,4 +139,33 @@ void redirect(FILE *out) {
   dup2(fileno(out), FILENO_STDOUT);
   fclose(out);
 }
+
+int built_in_command(char *args[], int args_num) {
+  if (strcmp(args[0], COMMAND_EXIT) == 0) {
+    exit(0);
+  }
+
+  if (strcmp(args[0], COMMAND_CD) == 0) {
+    if (args_num > 1) {
+      if (chdir(args[1])) {
+        printError();
+        exit(1);
+      }
+    } else {
+      printError();
+      exit(1);
+    }
+    return 1;
+  }
+
+  if (strcmp(args[0], COMMAND_PATH) == 0) {
+    for (int i = 1; i < args_num; i++) {
+      paths[path_ind++] = args[i];
+    }
+    return 1;
+  }
+
+  return 0;
+}
+
 
