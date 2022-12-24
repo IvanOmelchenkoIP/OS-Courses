@@ -6,64 +6,61 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
-int batch_parse(char *argv[]);
-int prompt_parse();
+int path_ind = 1;
+char *paths[BUFF_SIZE] = {"/bin"};
+
+typedef struct {
+  char *args[BUFF_SIZE];
+  int args_num;
+} ParseResponse;
 
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
   int return_code;
 
-  if (argc > 1) return_code = batch_parse(argv);
-  else return_code = prompt_parse();
-
-  return return_code;
-}
-
-int batch_parse(char *argv[]) {
-  char *filename = argv[1];
-  FILE* ptr = fopen(filename, "r+");
-  if (ptr == NULL) {
-    printError();
-    printf("File not found or could not be opened\n");
-    return 1;
-  }
-
-  size_t size = (BUFF_SIZE * sizeof(char));
-  char *buffer = malloc(size);
-  while (!feof(ptr)) {
-    getline(&buffer, &size, ptr);
-    if (strlen(buffer) == 0) continue;
-    parseInput(buffer);
-    free(buffer);
-  }
-  fclose(ptr);
-  return 0;
-}
-
-int prompt_parse() {
-  size_t size = (BUFF_SIZE * sizeof(char));
-  char *buffer = malloc(size);
-
-  char *exit_str = "exit";
-  while (1) {
-    printf("wish> ");
-    getline(&buffer, &size, stdin);
-    buffer[strcspn(buffer, "\n")] = 0;
-
-    if (strcmp(buffer, exit_str) == 0) {
-      printf("Exiting the bash...\n");
-      free(buffer);
-      return 0;
+  if (argc > 1) {
+    char *filename = argv[1];
+    FILE* ptr = fopen(filename, "r");
+    if (ptr == NULL) {
+      printError();
+      exit(0);
     }
-    parseInput(buffer);
-    free(buffer);
+
+    size_t size = (BUFF_SIZE * sizeof(char));
+    char *buffer = malloc(size);
+    while (!feof(ptr)) {
+      getline(&buffer, &size, ptr);
+      if (strlen(buffer) == 0) continue;
+      int args_num = parseInput(trim(buffer));
+      free(buffer);
+    }
+    fclose(ptr);
+  } else {
+    size_t size = (BUFF_SIZE * sizeof(char));
+    char *buffer = malloc(size);
+
+    char *exit_str = "exit";
+    while (1) {
+      printf("wish> ");
+      getline(&buffer, &size, stdin);
+      int args_num = parseInput(trim(buffer));
+      free(buffer);
+
+      int *args = parseInput(buffer);
+      for (int i = 0; i < 2; i++) printf("a1 %s\n", *args[1]);
+    }
   }
+  return (0);
 }
+
+char *trim(char *buffer) {
+  return buffer[strcspn(buffer, "\r\n")] = 0;
+};
 
 void *parseInput(void *arg) {
   char *input = strdup(arg);
   char *chunk;
-  char *args[strlen(input)];
+  char *args[BUFF_SIZE];
   int counter = 0;
   while((chunk = strsep(&input, " ")) != NULL) {
     char c = chunk[0];
@@ -72,6 +69,56 @@ void *parseInput(void *arg) {
     counter++;
     args[counter] = chunk;
   }
-  return *args;
+  ParseResponse * response = malloc(BUFF_SIZE);
+  response->args = args;
+  response->args_num = counter;
+  return &response;
 };
 
+void executeCommands(char *args[], int args_num, FILE *out) {
+  if (strcmp(args[0], "exit") == 0) {
+    exit(0);
+  }
+  if (strcmp(args[0], "cd") == 2) {
+    if (args_num > 1) {
+      int status = chdir(args[1]);
+      if (status) {
+        printError();
+        exit(1);
+      }
+    } else {
+      printError();
+      exit(1);
+    }
+    //continue;
+  }
+  if (strcmp(args[0], "path")) {
+    for (int i = 1; i < args_num; i++) {
+      paths[path_ind++] = args[i];
+    }
+    //continue;
+  }
+
+  if (access(args[0], X_OK) != 0) {
+      printf("1\n");
+      printError();
+      exit(1);
+    }
+    int pid = fork();
+    if (pid == 0) {
+      char *args[2];
+      args[0] = "/bin/ls";
+      args[1] = "-la";
+      int status = execv(args[0], args);
+      printf("%d\n", status);
+      if (status) {
+        printError();
+        exit(1);
+      }
+    }else if (pid > 0) {
+      wait(NULL);
+    } else {
+      printError();
+      exit(1);
+    }
+}
