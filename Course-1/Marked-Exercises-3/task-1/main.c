@@ -4,8 +4,10 @@
 int main(void) {
 
   // YOUR CODE HERE!
-  printf("Enter a value of N [1-10]: ");
-  int N;
+  int N = 0;
+  int sum = 0;
+
+  printf("Enter value of N [1-10]: ");
   scanf("%d", &N);
 
   if (N > 10 || N < 0) {
@@ -18,7 +20,8 @@ int main(void) {
     printf("Memory not allocated\n");
     exit(1);
   }
-  int sum = 0;
+
+  printf("Enter %d integer number(s)\n", N);
   for (int i = 0; i < N; i++) {
     printf("Enter #%d: ", (i + 1));
     scanf("%d", &arr[i]);

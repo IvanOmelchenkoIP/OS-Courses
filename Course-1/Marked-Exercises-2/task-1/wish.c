@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
     while (!feof(ptr)) {
       getline(&buffer, &size, ptr);
       if (strlen(buffer) == 0) continue;
+      trim(buffer)
       //int args_num = parseInput(trim(buffer));
       free(buffer);
     }
@@ -39,8 +40,32 @@ int main(int argc, char *argv[]) {
     while (1) {
       printf("wish> ");
       getline(&buffer, &size, stdin);
-      printf("%s\n", trim(buffer));
-      //int args_num = parseInput(trim(buffer));
+      if (strlen(buffer == 0)) continue;
+      buffer = trim(buffer);
+
+      char *args[BUFF_SIZE];
+      int counter = 0;
+      while((chunk = strsep(&input, " ")) != NULL) {
+        char c = chunk[0];
+        if (isspace(c) != 0) continue;
+        printf("%s\n", chunk);
+        counter++;
+        args[counter] = chunk;
+      }
+
+      char *command_args[sizeof(char *) * counter];
+      command_args[0] = command_args[0];
+      int args_num = 0
+      for (int i = 0; i < counter; i++) {
+        FILE *ptr = NULL;
+        command_args[args_num++] = args[i];
+
+        if (strcmp(command_args[i], "&&") == 0) {
+          executeCommands(command_args, args, NULL);
+
+        }
+      }
+      executeCommands(args, counter, NULL);
       free(buffer);
 
       //int *args = parseInput(buffer);
@@ -70,9 +95,11 @@ char *trim(char *buffer) {
   response->args = args;
   response->args_num = counter;
   return &response;
-};
+};*/
 
 void executeCommands(char *args[], int args_num, FILE *out) {
+  if (out != NULL) redirect(out);
+
   if (strcmp(args[0], "exit") == 0) {
     exit(0);
   }
@@ -84,38 +111,44 @@ void executeCommands(char *args[], int args_num, FILE *out) {
         exit(1);
       }
     } else {
-//      priCntError();
+      printError();
       exit(1);
     }
-    //continue;
+    return;
   }
   if (strcmp(args[0], "path")) {
     for (int i = 1; i < args_num; i++) {
       paths[path_ind++] = args[i];
     }
-    //continue;
+    return;
   }
 
   if (access(args[0], X_OK) != 0) {
-      printf("1\n");
+    printf("1\n");
+    printError();
+    exit(1);
+  }
+  int pid = fork();
+  if (pid == 0) {
+    char *args[2];
+    args[0] = "/bin/ls";
+    args[1] = "-la";
+    int status = execv(args[0], args);
+    printf("%d\n", status);
+    if (status) {
       printError();
       exit(1);
     }
-    int pid = fork();
-    if (pid == 0) {
-      char *args[2];
-      args[0] = "/bin/ls";
-      args[1] = "-la";
-      int status = execv(args[0], args);
-      printf("%d\n", status);
-      if (status) {
-        printError();
-        exit(1);
-      }
-    }else if (pid > 0) {
-      wait(NULL);
-    } else {
-      printError();
-      exit(1);
-    }
-}*/
+  } else if (pid > 0) {
+    wait(NULL);
+  } else {
+    printError();
+    exit(1);
+  }
+}
+
+void redirect(FILE *out) {
+  dup2(fileno(out), FILENO_STDOUT);
+  fclose(out);
+}
+
