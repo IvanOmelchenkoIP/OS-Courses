@@ -9,7 +9,8 @@
 FILE *input_ptr = stdin;
 
 char *buffer = NULL;
-char *initBuffer() {
+size_t buffer_size = (BUFF_SIZE * sizeof(char));
+void initBuffer() {
   char *buffer = malloc(buffer_size);
   if (buffer == NULL) {
     printError();
@@ -35,9 +36,11 @@ int builtInCommand(char *args[], int args_num);
 
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
+  int flag_interractive = 1;
+
   initPaths();
-  size_t buffer_size = (BUFF_SIZE * sizeof(char));
-  char *buffer = initBuffer();
+  initBuffer();
+
   if (argc > 1) {
     char *filename = argv[1];
     input_ptr = fopen(filename, "r");
@@ -45,32 +48,17 @@ int main(int argc, char *argv[]) {
       printError();
       exit(0);
     }
+  }
 
-    while (!feof(ptr)) {
-      getline(&buffer, &buffer_size, ptr);
-      if (strlen(buffer) == 0) continue;
-      void *status_ptr = parseInput(trim(buffer));
-      if (status_ptr != NULL) {
-        clean();
-        free(status_ptr);
-        printError();
-        exit(1);
-      }
-      free(status_ptr);
-      free(buffer);
-    }
-    fclose(ptr);
-  } else {
-    while (1) {
-      printf("wish> ");
-      getline(&buffer, &buffer_size, stdin);
-      if (strlen(buffer) == 0) continue;
-      if (parseInput(trim(buffer)) != NULL) {
-        clean();
-        printError();
-        exit(1);
-      }
-      free(buffer);
+  if (flag_interractive) printf("wish> ");
+
+  while(1) {
+    int length = getfile(&buffer, &buffer_size, input_ptr);
+    if (length == 0) continue;
+    if (parseInput(trim(buffer)) != NULL) {
+      clean();
+      printError();
+      exit(1);
     }
   }
   return (0);
