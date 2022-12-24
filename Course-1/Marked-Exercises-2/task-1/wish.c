@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
+FILE *input_ptr = stdin;
+
 char *buffer = NULL;
 char *initBuffer() {
   char *buffer = malloc(buffer_size);
@@ -38,8 +40,8 @@ int main(int argc, char *argv[]) {
   char *buffer = initBuffer();
   if (argc > 1) {
     char *filename = argv[1];
-    FILE* ptr = fopen(filename, "r");
-    if (ptr == NULL) {
+    input_ptr = fopen(filename, "r");
+    if (input_ptr == NULL || input_ptr == stdin || argv > 2) {
       printError();
       exit(0);
     }
@@ -220,4 +222,5 @@ int builtInCommand(char *args[], int args_num) {
 void clean() {
   free(buffer);
   free(paths);
+  fclose(input_ptr);
 }
