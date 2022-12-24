@@ -6,6 +6,9 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
+#define SYMBOL_AND "&&"
+#define SYMBOL_REDIRECT ">"
+
 #define COMMAND_EXIT "exit"
 #define COMMAND_CD "cd"
 #define COMMAND_PATH "path"
@@ -64,17 +67,39 @@ int main(int argc, char *argv[]) {
       int args_num = 0
       for (int i = 0; i < counter; i++) {
         FILE *ptr = NULL;
-        command_args[args_num++] = args[i];
+        char *arg = args[i];
 
-        if (strcmp(command_args[i], "&&") == 0) {
-          executeCommands(command_args, args, NULL);
-
+        if (ptr != NULL && strcmp(arg, SYMBOL_REDIRECT) != 0) {
+          printError();
+          exit(1);
         }
-      }
-      executeCommands(args, counter, NULL);
-      free(buffer);
 
-      //int *args = parseInput(buffer);
+        if (strcmp(arg, SYMBOL_REDIRECT) == 0) {
+          if (i + 1 >= counter) {
+            printError();
+            exit(1);
+          }
+          char *filename = args[i + 1];
+          if (strcmp(filename, SYMBOL_REDIRECT) == 0 || ptr != NULL) {
+            printError();
+            exit(1);
+          }
+          ptr = fopen(filename, "w");
+          i++;
+          continue;
+        }
+
+        if (strcmp(arg SYMBOL_AND) == 0 || i == (counter - 1)) {
+          executeCommands(command_args, args_num, ptr);
+          args_num = 0;
+          free(command_args);
+          ptr = NULL;
+          continue;
+        }
+
+        command_args[args_num++] = arg;
+      }
+      free(buffer);
     }
   }
   return (0);
