@@ -1,37 +1,108 @@
-#include <pthread.h> // pthread_create, pthread_join
-#include <regex.h>   // regcomp, regexec, regfree
-#include <stdio.h>   // fopen, fclose, fileno, getline, feof
-#include <string.h>  // strlen, strsep, strcat, strdup, strcmp
-#include <unistd.h>  // STDERR_FILENO, fork, exec, access, exit, chdir
+#include "wish.h"
+#include <ctype.h>  // isspace
+#include <regex.h>  // regcomp, regexec, regfree
+#include <stdio.h>  // fopen, fclose, fileno, getline, feof
+#include <stdlib.h> // exit
+#include <sys/types.h>
+#include <sys/wait.h> // waitpid
 
-#ifdef REG_ENHANCED  // macOS: man re_format
-#  define REG_CFLAGS REG_EXTENDED | REG_NOSUB | REG_ENHANCED
-#else
-#  define REG_CFLAGS REG_EXTENDED | REG_NOSUB
-#endif
+int batch_parse(char *argv[]);
+int prompt_parse();
 
-#define INTERACTIVE_MODE 1
-#define BATCH_MODE 2
-#define BUFF_SIZE 256
+int main(int argc, char *argv[]) {
+  // YOUR CODE HERE
+  int return_code;
 
-struct function_args {
-  pthread_t thread;
-  char *command;
-};
+  if (argc > 1) return_code = batch_parse(argv);
+  else return_code = prompt_parse();
 
-void printError() {
-  char error_message[30] = "An error has occurred\n";
-  write(STDERR_FILENO, error_message, strlen(error_message));
+  return return_code;
 }
 
-void *parseInput(void *arg);
+int batch_parse(char *argv[]) {
+  char *filename = argv[1];
+  FILE* ptr = fopen(filename, "r+");
+  if (ptr == NULL) {
+    printError();
+    printf("File not found or could not be opened\n");
+    return 1;
+  }
 
-int searchPath(char path[], char *firstArg);
+  size_t size = (BUFF_SIZE * sizeof(char));
+  char *buffer = malloc(size);
 
-void redirect(FILE *out);
+  while (!feof(ptr)) {
+    getline(&buffer, &size, ptr);
+    if (strlen(buffer) == 0) continue;
+    free(buffer);
+    //printf("%ld\n", strlen(buffer));
+  }
+  fclose(ptr);
+  return 0;
+}
 
-void executeCommands(char *args[], int args_num, FILE *out);
+int prompt_parse() {
+  size_t size = (BUFF_SIZE * sizeof(char));
+  char *buffer = malloc(size);
 
-char *trim(char *);
+  char *exit_str = "exit";
+  while (1) {
+    printf("wish> ");
+    getline(&buffer, &size, stdin);
+    buffer[strcspn(buffer, "\n")] = 0;
 
-void clean(void);
+    if (strcmp(buffer, exit_str) == 0) {
+      printf("Exiting the bash...\n");
+      free(buffer);
+      return 0;
+    }
+    free(buffer);
+
+    //char *args[] = parseInput(buffer);
+
+    if (access("/bin/ls", X_OK) != 0) {
+      printf("1\n");
+      printError();
+      return 1;
+    }
+    int pid = fork();
+    if (pid == 0) {
+      char *args[2];
+      args[0] = "/bin/ls";
+      args[1] = "-la";
+      int status = execv(args[0], args);
+      printf("%d\n", status);
+      /*if (status) {
+        printError();
+        return 1;
+      } */
+    }else if (pid > 0) {
+      wait(NULL);
+    } else {
+      printError();
+      return 1;
+    }
+
+  }
+}
+
+
+void *parseInput(void *arg) {
+  char *input = strdup(arg);
+  char *chunk;
+  char *args[strlen(input)];
+  int counter = 0;
+  while((chunk = strsep(&input, " ")) != NULL) {
+    char c = chunk[0];
+    if (isspace(c) != 0) continue;
+    printf("%s\n", chunk);
+    counter++;
+    args[counter] = chunk;
+  }
+  return *args;
+};
+
+void executeCommands(char *args[], int args_num, FILE *out) {
+  int pid = fork();
+  printf("%d", pid);
+}
