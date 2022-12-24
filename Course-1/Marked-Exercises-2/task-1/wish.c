@@ -71,11 +71,32 @@ int main(int argc, char *argv[]) {
 
 char *trim_spaces(char *buffer) {
   buffer[strcspn(buffer, "\r\n")] = 0;
-  return buffer;
+  return strdup(buffer);
 };
 
 void parallelRoutines(char* buffer) {
+  int routine_num = 0;
+  char *routine;
+  struct function_args args[BUFF_SIZE];
 
+  while (routine = strsep(&buffer, "&")) != NULL && routine_num <= BUFF_NUM) {
+    if (strlen(routine)) args[routine_num++].command = routine;
+
+    for (int i = 0; i < routine_num; i++) {
+      if (pthread_create(&args[i].thread, NULL, &parseInput, &args[i] != 0) {
+        printError();
+        exit(1);
+      }
+    }
+
+    for (size_t i = 0; i < commands_num; i++) {
+      if (pthread_join(args[i].thread, NULL) != 0) {
+        printError();
+        exit(1);
+      }
+      free(args[i].command);
+    }
+  }
 }
 
 void *parseInput(void *arg) {
