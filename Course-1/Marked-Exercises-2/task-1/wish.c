@@ -21,7 +21,8 @@ typedef struct {
   int args_num;
 } ParseResponse;
 
-int built_in_command(char *args[], int args_num);
+int parseCommands(char *args[], int args_num);
+int builtInCommand(char *args[], int args_num);
 
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
@@ -38,8 +39,12 @@ int main(int argc, char *argv[]) {
     while (!feof(ptr)) {
       getline(&buffer, &size, ptr);
       if (strlen(buffer) == 0) continue;
-      trim(buffer)
-      //int args_num = parseInput(trim(buffer));
+
+      int status = *((int *)parseCommands(trim(buffer)));
+      if (status) {
+        printError();
+        exit(1);
+      }
       free(buffer);
     }
     fclose(ptr);
@@ -50,57 +55,12 @@ int main(int argc, char *argv[]) {
       printf("wish> ");
       getline(&buffer, &size, stdin);
       if (strlen(buffer == 0)) continue;
-      buffer = trim(buffer);
 
-      char *args[BUFF_SIZE];
-      int counter = 0;
-      while((chunk = strsep(&input, " ")) != NULL) {
-        char c = chunk[0];
-        if (isspace(c) != 0) continue;
-        printf("%s\n", chunk);
-        counter++;
-        args[counter] = chunk;
+      int status = *((int *)parseCommands(trim(buffer)));
+      if (status) {
+        printError();
+        exit(1);
       }
-
-      char *command_args[sizeof(char *) * counter];
-      command_args[0] = command_args[0];
-      int args_num = 0
-      for (int i = 0; i < counter; i++) {
-        FILE *ptr = NULL;
-        char *arg = args[i];
-
-        if (ptr != NULL && strcmp(arg, SYMBOL_REDIRECT) != 0) {
-          printError();
-          exit(1);
-        }
-
-        if (strcmp(arg, SYMBOL_REDIRECT) == 0) {
-          if (i + 1 >= counter) {
-            printError();
-            exit(1);
-          }
-          char *filename = args[i + 1];
-          if (strcmp(filename, SYMBOL_REDIRECT) == 0 || ptr != NULL) {
-            printError();
-            exit(1);
-          }
-          ptr = fopen(filename, "w");
-          i++;
-          continue;
-        }
-
-        if (strcmp(arg SYMBOL_AND) == 0 || i == (counter - 1)) {
-          executeCommands(command_args, args_num, ptr);
-          args_num = 0;
-          free(command_args);
-          ptr = NULL;
-          continue;
-        }
-
-        command_args[args_num++] = arg;
-      }
-      free(buffer);
-    }
   }
   return (0);
 }
@@ -110,7 +70,7 @@ char *trim(char *buffer) {
   return buffer;
 };
 
-/*void *parseInput(void *arg) {
+void *parseInput(void *arg) {
   char *input = strdup(arg);
   char *chunk;
   char *args[BUFF_SIZE];
@@ -118,19 +78,56 @@ char *trim(char *buffer) {
   while((chunk = strsep(&input, " ")) != NULL) {
     char c = chunk[0];
     if (isspace(c) != 0) continue;
-    printf("%s\n", chunk);
     counter++;
     args[counter] = chunk;
   }
-  ParseResponse * response = malloc(BUFF_SIZE);
-  response->args = args;
-  response->args_num = counter;
-  return &response;
-};*/
+  return &parseCommands(args, counter);
+};
+
+int parseCommands(char *args[], int args_num) {
+  char *command_args[sizeof(char *) * counter];
+  command_args[0] = command_args[0];
+  int command_args_num = 0
+  for (int i = 0; i < counter; i++) {
+    FILE *ptr = NULL;
+    char *arg = args[i];
+
+    if (ptr != NULL && strcmp(arg, SYMBOL_REDIRECT) != 0) {
+      printError();
+      exit(1);
+    }
+
+    if (strcmp(arg, SYMBOL_REDIRECT) == 0) {
+      if (i + 1 >= counter) {
+        printError();
+        exit(1);
+      }
+      char *filename = args[i + 1];
+      if (strcmp(filename, SYMBOL_REDIRECT) == 0 || ptr != NULL) {
+        printError();
+        exit(1);
+      }
+      ptr = fopen(filename, "w");
+      i++;
+      continue;
+    }
+
+    if (strcmp(arg SYMBOL_AND) == 0 || i == (counter - 1)) {
+      executeCommands(command_args, args_num, ptr);
+      command_args_num = 0;
+      free(command_args);
+      ptr = NULL;
+      continue;
+    }
+
+    command_args[command_args_num++] = arg;
+  }
+}
+
 
 void executeCommands(char *args[], int args_num, FILE *out) {
   if (out != NULL) redirect(out);
-  if (built_in_command(args, args_num)) return;
+  if (builtInCommand(args, args_num)) return;
 
   int flagAccess = 0;
   for (int i = 0; i <= path_ind; i++) {
@@ -165,7 +162,7 @@ void redirect(FILE *out) {
   fclose(out);
 }
 
-int built_in_command(char *args[], int args_num) {
+int builtInCommand(char *args[], int args_num) {
   if (strcmp(args[0], COMMAND_EXIT) == 0) {
     exit(0);
   }
