@@ -104,6 +104,8 @@ void *parseInput(void *arg) {
   if (args == NULL) return (void *)malloc(1);
   for (int i = 0; i < BUFF_SIZE; i++) args[i] = malloc(sizeof(char *));
   int counter = 0;
+  struct function_args *fun_args = (struct function_args *)arg;
+
   while((chunk = strsep(&input, " ")) != NULL) {
     char c = chunk[0];
     if (isspace(c) == 0) continue;
@@ -114,6 +116,19 @@ void *parseInput(void *arg) {
   if (status) return (void *)malloc(1);
   return NULL;
 };
+
+char *trim(char *str) {
+  while(isspace(*str)) str++;
+
+  if(strlen(str) == 0) return str;
+
+  char *end = str + strlen(str) - 1;
+  while(end > str && isspace((unsigned char)*end)) end--;
+  end[1] = '\0';
+
+  return str;
+}
+}
 
 int parseCommands(char *args[], int args_num) {
   char **command_args = malloc(args_num * sizeof(char *));
@@ -156,7 +171,6 @@ int parseCommands(char *args[], int args_num) {
   }
   return 0;
 }
-
 
 void executeCommands(char *args[], int args_num, FILE *out) {
   if (out != NULL) redirect(out);
