@@ -60,11 +60,7 @@ int main(int argc, char *argv[]) {
       clean();
       return (0);
     }
-    if (parseInput(trim_spaces(buffer)) != NULL) {
-      clean();
-      printError();
-      exit(1);
-    }
+    parallelRoutines(trim_spaces(buffer));
   }
   return (0);
 }
@@ -84,6 +80,7 @@ void parallelRoutines(char* buffer) {
 
     for (int i = 0; i < routine_num; i++) {
       if (pthread_create(&args[i].thread, NULL, &parseInput, &args[i] != 0) {
+        clean();
         printError();
         exit(1);
       }
@@ -91,6 +88,7 @@ void parallelRoutines(char* buffer) {
 
     for (size_t i = 0; i < commands_num; i++) {
       if (pthread_join(args[i].thread, NULL) != 0) {
+        clean();
         printError();
         exit(1);
       }
@@ -164,42 +162,33 @@ void executeCommands(char *args[], int args_num, FILE *out) {
   if (out != NULL) redirect(out);
   if (builtInCommand(args, args_num)) return;
 
-  int flagAccess = 0;
-  for (int i = 0; i <= path_ind; i++) {
-    char *command = strcat(paths[i], args[0]);
-    if (access(command, X_OK == 0)) {
-      args[0] = command;
-      flagAccess = 1;
-      break;
-    }
-  }
-  if (!flagAccess) {
-    clean();
-    free(args);
+  char command_path[];
+  if (!searchPath(command_path, args[0])) {
     printError();
-    exit(1);
+    return;
   }
 
   int pid = fork();
   if (pid == 0) {
-    if (execv(args[0], args)) {
-      clean();
-      free(args);
-      printError();
-      exit(1);
-    }
+    if (execv(args[0], args)) printError();
   } else if (pid > 0) {
-    wait(NULL);
+    waitpid(pid, NULL, 0);
   } else {
-    clean();
-    free(args);
     printError();
-    exit(1);
   }
 }
 
 void redirect(FILE *out) {
-  dup2(fileno(out), STDOUT_FILENO);
+  int filenoOut;
+  if (fileno(out) == -1) {
+    printError();
+    return;
+  }
+
+  if (dup2(fileno(filenoOut), STDOUT_FILENO) != 0 || dup2(fileno(filenoOut), STDERR_FILENO) != 0){
+    printError();
+    return;
+  }
   fclose(out);
 }
 
@@ -212,28 +201,28 @@ int builtInCommand(char *args[], int args_num) {
 
   if (strcmp(args[0], "cd") == 0) {
     if (args_num > 1) {
-      if (chdir(args[1])) {
-        clean();
-        free(args);
-        printError();
-        exit(1);
-      }
+      if (chdir(args[1]) != 0)printError();
     } else {
-      clean();
-      free(args);
       printError();
-      exit(1);
     }
     return 1;
   }
 
   if (strcmp(args[0], "path") == 0) {
     for (int i = 1; i < args_num; i++) {
-      paths[path_ind++] = args[i];
+      if (path_ind < BUFF_SIZE) paths[path_ind++] = args[i];
     }
     return 1;
   }
 
+  return 0;
+}
+
+int searchPath(char path[], char *firstArg) {
+  for (int i = 0; i <= path_ind; i++) {
+    char *command = snprintf(paths, BUFF_SIZE, "%s/%s", paths[i], firstArg);
+    if (access(command, X_OK == 0)) return 1;
+  }
   return 0;
 }
 
