@@ -20,24 +20,28 @@ int main(int argc, char *argv[]) {
 }
 
 int batch_parse(char *argv[]) {
-  FILE* ptr = fopen(argv[1], "r");
-  int no = fileno(ptr);
-  /*if (fileno(ptr) == -1) {
-    printf("Could not open file\n");
+  char *filename = argv[1];
+  FILE* ptr = fopen(filename, "r");
+  if (ptr == NULL) {
+    printError();
+    printf("File not found or could not be opened\n");
     return 1;
-  }*/
+  }
 
-  size_t size = (BUFFER_SIZE * sizeof(char));
+  size_t size = (BUFF_SIZE * sizeof(char));
   char *buffer = malloc(size);
-  /*while(!feof(ptr)) {
+
+  while (!feof(ptr)) {
     getline(&buffer, &size, ptr);
     printf("%s\n", buffer);
-  }*/
+    free(buffer);
+  }
+
   exit(0);
 }
 
 int prompt_parse() {
-  size_t size = (BUFFER_SIZE * sizeof(char));
+  size_t size = (BUFF_SIZE * sizeof(char));
   char *buffer = malloc(size);
 
   char *exit_str = "exit";
@@ -52,7 +56,7 @@ int prompt_parse() {
       return 0;
     }
 
-    int pid = execv();
+    //int pid = execv();
 
     free(buffer);
   }
