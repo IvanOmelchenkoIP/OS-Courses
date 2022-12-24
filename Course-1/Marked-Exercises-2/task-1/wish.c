@@ -84,7 +84,7 @@ void executeCommands(char *args[], int args_num, FILE *out) {
         exit(1);
       }
     } else {
-      printError();
+//      priCntError();
       exit(1);
     }
     //continue;
