@@ -1,0 +1,49 @@
+# Marked Exercises 2
+
+## Task 1 -  Given the following information:
+
+- A virtual memory has a page size of 1k (1024) words.
+- There are 8 pages.
+- There are 4 blocks.
+
+**The memory page table contains the information below:**
+
+|Page |	Block |
+| 0	  | 3     |
+| 1	  | 1     |
+| 4	  | 2     |
+| 6	  | 0     |
+
+Select all of the following address ranges that will result in a page fault.
+
+Hint: Page faults occur on page numbers not specified in the memory page table. Calculate the address range by using the page of 1024 words.
+
+## Solution
+
+Pages 8 pages: 0, 1, 2, 3, 4, 5, 6, 7
+
+Memory ranges:
+
+0 -> 0 - 1023
+
+1 -> 1024 - 2047
+
+2 -> 2048 - 3071
+
+3 -> 3072 - 4095
+
+4 -> 4096 - 5119
+
+5 -> 5120 - 6143
+
+6 -> 6144 - 7167
+
+7 -> 7168 - 8191
+
+Specified: 0, 1, 4, 6 -> error will occur on unspecified pages:
+
+2 -> 2048 - 3071
+
+3 -> 3072 - 4095
+
+
