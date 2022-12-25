@@ -58,10 +58,11 @@ void runParallelTasks(char *buffer) {
   int routines_num = 0;
   struct function_args args[BUFF_SIZE];
 
-  while ((routine = strsep(&buffer, "&")) != NULL)
+  while ((routine = strsep(&buffer, "&")) != NULL) {
     if (routine[0] != '\0') {
       args[routines_num++].command = strdup(routine);
       if (routines_num >= BUFF_SIZE) break;
+    }
   }
 
   for (size_t i = 0; i < routines_num; i++){
@@ -71,16 +72,6 @@ void runParallelTasks(char *buffer) {
     if (pthread_join(args[i].thread, NULL) != 0) printError();
     if (args[i].command != NULL) free(args[i].command);
   }
-}
-
-
-char *trim(char *s) {
-  while (isspace(*s)) s++;
-  if (*s == '\0') return s;
-  char *end = s + strlen(s) - 1;
-  while (end > s && isspace(*end)) end--;
-  end[1] = '\0';
-  return s;
 }
 
 void *parseInput(void *arg) {
@@ -120,14 +111,22 @@ void *parseInput(void *arg) {
   char **command_chunk = args;
   while((*command_chunk = strsep(&command, " \t")) != NULL) {
     if (args_num >= BUFF_SIZE) break;
-    if (**command_chunk != '\0') {
-      *command_chunk = trim(*command_chunk);
-      command_chunk++;
-      args_num++;
-    };
+    if (**command_chunk == '\0') continue;
+    *command_chunk = trim(*command_chunk);
+    command_chunk++;
+    args_num++;
   }
   if (args_num > 0) executeCommands(args, args_num, output_ptr);
   return NULL;
+}
+
+char *trim(char *s) {
+  while (isspace(*s)) s++;
+  if (*s == '\0') return s;
+  char *end = s + strlen(s) - 1;
+  while (end > s && isspace(*end)) end--;
+  end[1] = '\0';
+  return s;
 }
 
 void executeCommands(char *args[], int args_num, FILE *out) {
