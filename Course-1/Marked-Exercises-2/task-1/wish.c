@@ -33,7 +33,6 @@ void initPaths() {
 
 char *trim_spaces(char *buffer);
 void parallelRoutines(char* buffer);
-int parseCommands(char *args[], int args_num);
 int builtInCommand(char *args[], int args_num);
 
 int main(int argc, char *argv[]) {
@@ -98,22 +97,42 @@ void parallelRoutines(char* buffer) {
 }
 
 void *parseInput(void *arg) {
-  char *input = strdup(arg);
-  char *chunk;
-  char **args = malloc(BUFF_SIZE * sizeof(char *));
-  if (args == NULL) return (void *)malloc(1);
-  for (int i = 0; i < BUFF_SIZE; i++) args[i] = malloc(sizeof(char *));
-  int counter = 0;
-  struct function_args *fun_args = (struct function_args *)arg;
+  FILE *output_ptr = stdout;
 
+  char *args[BUFF_SIZE];
+  int args_num = 0;
+  struct function_args *fun_args = (struct function_args *)arg;
+  char *input = fun_args->command;
+
+  char *command = strsep(&input, ">");
+  if (command == NULL || strlen(command) == 0) {
+    printError();
+    return;
+  }
+
+  if (input != NULL) {
+    regex_t reg;
+    if (regcomp(&reg, "\\S\\s+\\S", REG_CFLAGS) != 0 || strstr(input, ">") != NULL) {
+      printError();
+      regfree(&reg);
+      return NULL;
+    }
+    regfree(&reg);
+
+    if ((output_ptr = fopen(trim(input), "w")) == NULL) {
+      printError();
+      return NULL;
+    }
+  }
+
+  input = trim(input);
+  char *chunk;
   while((chunk = strsep(&input, " ")) != NULL) {
     char c = chunk[0];
     if (isspace(c) == 0) continue;
     args[counter++] = chunk;
   }
-  int status = parseCommands(args, counter);
-  free(args);
-  if (status) return (void *)malloc(1);
+  if (args_num > 0) executeCommands(args, args_num, output_ptr);
   return NULL;
 };
 
@@ -127,49 +146,6 @@ char *trim(char *str) {
   end[1] = '\0';
 
   return str;
-}
-}
-
-int parseCommands(char *args[], int args_num) {
-  char **command_args = malloc(args_num * sizeof(char *));
-  if (command_args == NULL) return 1;
-  for (int i = 0; i < args_num; i++) command_args[i] = malloc(sizeof(char *));
-  int command_args_num = 0;
-  for (int i = 0; i < args_num; i++) {
-    FILE *ptr = NULL;
-    char *arg = args[i];
-
-    if (ptr != NULL && strcmp(arg, ">") != 0) {
-      free(command_args);
-      return 1;
-    }
-
-    if (strcmp(arg, ">") == 0) {
-      if (i + 1 >= args_num) {
-        free(command_args);
-        return 1;
-      }
-      char *filename = args[i + 1];
-      if (strcmp(filename, ">") == 0 || ptr != NULL) {
-        free(command_args);
-        return 1;
-      }
-      ptr = fopen(filename, "w");
-      i++;
-      continue;
-    }
-
-    if (strcmp(arg, "&&") == 0 || i == (args_num - 1)) {
-      executeCommands(command_args, args_num, ptr);
-      command_args_num = 0;
-      ptr = NULL;
-      free(command_args);
-      continue;
-    }
-
-    command_args[command_args_num++] = arg;
-  }
-  return 0;
 }
 
 void executeCommands(char *args[], int args_num, FILE *out) {
