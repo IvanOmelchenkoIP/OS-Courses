@@ -6,46 +6,24 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
-FILE *input_ptr = stdin;
-
-char *buffer = NULL;
-size_t buffer_size = (BUFF_SIZE * sizeof(char));
-void initBuffer() {
-  char *buffer = malloc(buffer_size);
-  if (buffer == NULL) {
-    printError();
-    exit(1);
-  }
-  return buffer;
-}
-
+FILE *input_ptr = NULL;
 int path_ind = 1;
-char **paths = NULL;
-void initPaths() {
-  paths = malloc(BUFF_SIZE * sizeof(char *));
-  if (paths == NULL) {
-    printError();
-    exit(1);
-  }
-  for (int i = 0; i < BUFF_SIZE; i++) paths[i] = (char *)malloc(sizeof(char *));
-  paths[0] ="/bin";
-}
+char *paths[BUFF_SIZE] = {"/bin"};
+char *buffer = NULL;
 
 char *trim_spaces(char *buffer);
-void parallelRoutines(char* buffer);
+void parallelRoutines(char *buffer);
 int builtInCommand(char *args[], int args_num);
 
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
+  size_t buffer_size = BUFF_SIZE;
+  input_ptr = stdin;
   int flag_interractive = 1;
-
-  initPaths();
-  initBuffer();
-
   if (argc > 1) {
     char *filename = argv[1];
     input_ptr = fopen(filename, "r");
-    if (input_ptr == NULL || input_ptr == stdin || argv > 2) {
+    if (input_ptr == NULL || input_ptr == stdin || argc > 2) {
       printError();
       exit(0);
     }
@@ -53,7 +31,7 @@ int main(int argc, char *argv[]) {
 
   if (flag_interractive) printf("wish> ");
   while(1) {
-    int length = getfile(&buffer, &buffer_size, input_ptr);
+    int length = getline(&buffer, &buffer_size, input_ptr);
     if (length == 0) continue;
     if (feof(input_ptr)) {
       clean();
@@ -74,18 +52,18 @@ void parallelRoutines(char* buffer) {
   char *routine;
   struct function_args args[BUFF_SIZE];
 
-  while (routine = strsep(&buffer, "&")) != NULL && routine_num <= BUFF_NUM) {
+  while ((routine = strsep(&buffer, "&")) != NULL && routine_num <= BUFF_SIZE) {
     if (strlen(routine)) args[routine_num++].command = routine;
 
     for (int i = 0; i < routine_num; i++) {
-      if (pthread_create(&args[i].thread, NULL, &parseInput, &args[i] != 0) {
+      if (pthread_create(&args[i].thread, NULL, &parseInput, &args[i]) != 0) {
         clean();
         printError();
         exit(1);
       }
     }
 
-    for (size_t i = 0; i < commands_num; i++) {
+    for (size_t i = 0; i < routine_num; i++) {
       if (pthread_join(args[i].thread, NULL) != 0) {
         clean();
         printError();
@@ -107,7 +85,7 @@ void *parseInput(void *arg) {
   char *command = strsep(&input, ">");
   if (command == NULL || strlen(command) == 0) {
     printError();
-    return;
+    return NULL;
   }
 
   if (input != NULL) {
@@ -130,7 +108,7 @@ void *parseInput(void *arg) {
   while((chunk = strsep(&input, " ")) != NULL) {
     char c = chunk[0];
     if (isspace(c) == 0) continue;
-    args[counter++] = chunk;
+    args[args_num++] = chunk;
   }
   if (args_num > 0) executeCommands(args, args_num, output_ptr);
   return NULL;
@@ -152,7 +130,7 @@ void executeCommands(char *args[], int args_num, FILE *out) {
   if (out != NULL) redirect(out);
   if (builtInCommand(args, args_num)) return;
 
-  char command_path[];
+  char command_path[BUFF_SIZE];
   if (!searchPath(command_path, args[0])) {
     printError();
     return;
@@ -170,16 +148,17 @@ void executeCommands(char *args[], int args_num, FILE *out) {
 
 void redirect(FILE *out) {
   int filenoOut;
-  if (fileno(out) == -1) {
+  if ((filenoOut = fileno(out)) == -1) {
     printError();
     return;
   }
-
-  if (dup2(fileno(filenoOut), STDOUT_FILENO) != 0 || dup2(fileno(filenoOut), STDERR_FILENO) != 0){
-    printError();
-    return;
+  if (filenoOut != STDOUT_FILENO) {
+    if (dup2(filenoOut, STDOUT_FILENO) != 0 || dup2(filenoOut, STDERR_FILENO) != 0){
+      printError();
+      return;
+    }
+    fclose(out);
   }
-  fclose(out);
 }
 
 int builtInCommand(char *args[], int args_num) {
@@ -210,14 +189,13 @@ int builtInCommand(char *args[], int args_num) {
 
 int searchPath(char path[], char *firstArg) {
   for (int i = 0; i <= path_ind; i++) {
-    char *command = snprintf(paths, BUFF_SIZE, "%s/%s", paths[i], firstArg);
-    if (access(command, X_OK == 0)) return 1;
+    snprintf(path, BUFF_SIZE, "%s/%s", paths[i], firstArg);
+    if (access(path, X_OK == 0)) return 1;
   }
   return 0;
 }
 
 void clean() {
   free(buffer);
-  free(paths);
   fclose(input_ptr);
 }
