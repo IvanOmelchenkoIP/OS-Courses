@@ -40,9 +40,26 @@ void *MyMalloc(size_t noOfBytes){
  void *result;
 
  //add your code below this line
+ if (!freeList->size) initialize();
+ curr = freeList;
 
+ while (curr->next != NULL) {
+   if (curr->size >= noOfBytes && curr->free) break;
+   prev = curr;
+   curr = curr->next;
+ }
 
-
+ if (curr->size == noOfBytes) {
+   curr->free = 0;
+   return curr;
+ } else if (curr->size > noOfBytes) {
+   split(curr, noOfBytes);
+   curr->free = 0;
+   return curr;
+ } else {
+   printf("Sorry. No sufficient memory to allocate\n");
+   return NULL;
+ }
  //add your code above this line
 }
 
@@ -50,8 +67,10 @@ void *MyMalloc(size_t noOfBytes){
 void MyFree(void* ptr){
 
  //add your code below this line
-
-
-
+ if (ptr >= (void*)memory && ptr <= (void *)(memory + 20000)) {
+   struct block *curr = ptr;
+   curr->free = 1;
+   merge();
+ }
  //add your code above this line
 }
