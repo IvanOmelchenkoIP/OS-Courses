@@ -11,7 +11,7 @@ int path_ind = 1;
 char *paths[BUFF_SIZE] = {"/bin"};
 char *buffer = NULL;
 
-char *trim_spaces(char *buffer);
+char *removeNewlineDup(char *buffer, int length);
 void parallelRoutines(char *buffer);
 int builtInCommand(char *args[], int args_num);
 
@@ -19,32 +19,31 @@ int main(int argc, char *argv[]) {
   // YOUR CODE HERE
   size_t buffer_size = BUFF_SIZE;
   input_ptr = stdin;
-  int flag_interractive = 1;
+  int mode = INTERACTIVE_MODE;
   if (argc > 1) {
-    char *filename = argv[1];
-    input_ptr = fopen(filename, "r");
-    flag_interractive = 0;
+    input_ptr = fopen(argv[1], "r");
+    mode = BATCH_MODE;
     if (input_ptr == NULL || input_ptr == stdin || argc > 2) {
       printError();
       exit(0);
     }
   }
 
+  int length;
   while(1) {
-    if (flag_interractive) printf("wish> ");
-    int length = getline(&buffer, &buffer_size, input_ptr);
-    if (length == 0) continue;
+    if (mode == INTERACTIVE_MODE) printf("wish> ");
+    if ((length = getline(&buffer, &buffer_size, input_ptr)) == 0) continue;
     if (feof(input_ptr)) {
       clean();
       return (0);
     }
-    parallelRoutines(trim_spaces(buffer));
+    parallelRoutines(removeNewlineDup(buffer, length));
   }
   return (0);
 }
 
-char *trim_spaces(char *buffer) {
-  buffer[strcspn(buffer, "\r\n")] = 0;
+char *removeNewlineDup(char *buffer, int length) {
+  if (buffer[length - 1] == '\n') buffer[length - 1] = '\0';
   return strdup(buffer);
 };
 
@@ -53,8 +52,8 @@ void parallelRoutines(char* buffer) {
   char *routine;
   struct function_args args[BUFF_SIZE];
 
-  while ((routine = strsep(&buffer, "&")) != NULL && routine_num <= BUFF_SIZE) {
-    if (strlen(routine)) args[routine_num++].command = strdup(routine);
+  while ((routine = strsep(&buffer, "&")) != NULL || routine_num <= BUFF_SIZE) {
+    if (routine[0] != '\0') args[routine_num++].command = strdup(routine);
 
     for (int i = 0; i < routine_num; i++) {
       if (pthread_create(&args[i].thread, NULL, &parseInput, &args[i]) != 0) printError();
@@ -75,7 +74,7 @@ void *parseInput(void *arg) {
   struct function_args *fun_args = (struct function_args *)arg;
   char *input = fun_args->command;
   char *command = strsep(&input, ">");
-  if (command == NULL || strlen(command) == 0) {
+  if (command == NULL || *command == '\0') {
     printError();
     return NULL;
   }
@@ -102,24 +101,23 @@ void *parseInput(void *arg) {
 
   command = trim(command);
   char *chunk;
-  while((chunk = strsep(&command, " \t")) != NULL) {
-    if (!strlen(chunk)) continue;
-    args[args_num++] = (char *)chunk;
+  while((chunk = strsep(&command, " \t")) != NULL || args_num <= BUFF_SIZE) {
+    if (*chunk != '\0') args[args_num++] = trim((char *)chunk);
   }
   if (args_num > 0) executeCommands(args, args_num, output_ptr);
   return NULL;
 };
 
-char *trim(char *str) {
-  while(isspace(*str)) str++;
+char *trim(char *s) {
+  while (isspace(*s)) s++;
 
-  if(strlen(str) == 0) return str;
+  if (*s == '\0') return s;
 
-  char *end = str + strlen(str) - 1;
-  while(end > str && isspace((unsigned char)*end)) end--;
+  char *end = s + strlen(s) - 1;
+  while (end > s && isspace(*end)) end--;
   end[1] = '\0';
 
-  return str;
+  return s;
 }
 
 void executeCommands(char *args[], int args_num, FILE *out) {
@@ -129,10 +127,10 @@ void executeCommands(char *args[], int args_num, FILE *out) {
     printError();
     return;
   }
-  pid_t pid = fork();
+  int pid = fork();
   if (pid == 0) {
     redirect(out);
-    if (execv(&command_path[0], args)) printError();
+    if (execv(command_path, args)) printError();
   } else if (pid > 0) {
     waitpid(pid, NULL, 0);
   } else {
@@ -162,8 +160,8 @@ int builtInCommand(char *args[], int args_num) {
   }
 
   if (strcmp(args[0], "cd") == 0) {
-    if (args_num > 1) {
-      if (chdir(args[1]) != 0)printError();
+    if (args_num == 2) {
+      if (chdir(args[1]) != 0) printError();
     } else {
       printError();
     }
