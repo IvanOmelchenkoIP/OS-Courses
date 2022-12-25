@@ -7,63 +7,80 @@
 #include <sys/wait.h> // waitpid
 
 FILE *input_ptr = NULL;
-int path_ind = 1;
-char *paths[BUFF_SIZE] = {"/bin"};
+char *paths[BUFF_SIZE] = { "/bin", NULL };
 char *buffer = NULL;
 
-char *removeNewlineDup(char *buffer, int length);
-void parallelRoutines(char *buffer);
+void clean(void) {
+  free(buffer);
+  fclose(input_ptr);
+}
+
+char *trimNewline(char* buffer, int length);
+void runParallelTasks(char *buffer);
 int builtInCommand(char *args[], int args_num);
 
 int main(int argc, char *argv[]) {
   // YOUR CODE HERE
-  size_t buffer_size = BUFF_SIZE;
-  input_ptr = stdin;
   int mode = INTERACTIVE_MODE;
+  input_ptr = stdin;
+  size_t linecap = 0;
+
   if (argc > 1) {
-    input_ptr = fopen(argv[1], "r");
     mode = BATCH_MODE;
-    if (input_ptr == NULL || input_ptr == stdin || argc > 2) {
+    if ((input_ptr = fopen(argv[1], "r")) == NULL  || argc > 2) {
       printError();
-      exit(0);
+      exit(EXIT_FAILURE);
     }
   }
 
   int length;
-  while(1) {
+  while (1) {
     if (mode == INTERACTIVE_MODE) printf("wish> ");
-    if ((length = getline(&buffer, &buffer_size, input_ptr)) == 0) continue;
-    if (feof(input_ptr)) {
-      clean();
-      return (0);
+    if ((length = getline(&buffer, &linecap, input_ptr)) <= 0) {
+      if (feof(input_ptr) != 0) {
+        clean();
+        exit(EXIT_SUCCESS);
+      }
+      continue;
     }
-    parallelRoutines(removeNewlineDup(buffer, length));
+    runParallelTasks(trimNewline(buffer, length));
   }
-  return (0);
+  return 0;
 }
 
-char *removeNewlineDup(char *buffer, int length) {
+char *trimNewline(char* buffer, int length) {
   if (buffer[length - 1] == '\n') buffer[length - 1] = '\0';
-  return strdup(buffer);
-};
+  return buffer;
+}
 
-void parallelRoutines(char* buffer) {
-  int routine_num = 0;
+void runParallelTasks(char *buffer) {
   char *routine;
+  int routines_num = 0;
   struct function_args args[BUFF_SIZE];
 
-  while ((routine = strsep(&buffer, "&")) != NULL || routine_num <= BUFF_SIZE) {
-    if (routine[0] != '\0') args[routine_num++].command = strdup(routine);
-
-    for (int i = 0; i < routine_num; i++) {
-      if (pthread_create(&args[i].thread, NULL, &parseInput, &args[i]) != 0) printError();
-    }
-
-    for (int i = 0; i < routine_num; i++) {
-      if (pthread_join(args[i].thread, NULL) != 0) printError();
-      if (args[i].command != NULL) free(args[i].command);
-    }
+  while ((routine = strsep(&buffer, "&")) != NULL)
+    if (routine[0] != '\0') {
+      args[routines_num++].command = strdup(routine);
+      if (routines_num >= BUFF_SIZE) break;
   }
+
+  for (size_t i = 0; i < routines_num; i++){
+    if (pthread_create(&args[i].thread, NULL, &parseInput, &args[i]) != 0) printError();
+  }
+  for (size_t i = 0; i < routines_num; i++) {
+    if (pthread_join(args[i].thread, NULL) != 0) printError();
+    if (args[i].command != NULL) free(args[i].command);
+  }
+}
+
+
+char *trim(char *s) {
+  while (isspace(*s)) s++;
+  if (*s == '\0') return s;
+  char *end = s + strlen(s) - 1;
+  while (end > s && isspace(*end)) end--;
+  end[1] = '\0';
+  return s;
 }
 
 void *parseInput(void *arg) {
@@ -73,11 +90,13 @@ void *parseInput(void *arg) {
   int args_num = 0;
   struct function_args *fun_args = (struct function_args *)arg;
   char *input = fun_args->command;
+
   char *command = strsep(&input, ">");
   if (command == NULL || *command == '\0') {
     printError();
     return NULL;
   }
+
   if (input != NULL) {
     regex_t reg;
     if (regcomp(&reg, "\\S\\s+\\S", REG_CFLAGS) != 0) {
@@ -90,9 +109,7 @@ void *parseInput(void *arg) {
       regfree(&reg);
       return NULL;
     }
-
     regfree(&reg);
-
     if ((output_ptr = fopen(trim(input), "w")) == NULL) {
       printError();
       return NULL;
@@ -100,37 +117,32 @@ void *parseInput(void *arg) {
   }
 
   command = trim(command);
-  char *chunk;
-  while((chunk = strsep(&command, " \t")) != NULL || args_num <= BUFF_SIZE) {
-    if (*chunk != '\0') args[args_num++] = trim((char *)chunk);
+  char **command_chunk = args;
+  while((*command_chunk = strsep(&command, " \t")) != NULL) {
+    if (args_num >= BUFF_SIZE) break;
+    if (**command_chunk != '\0') {
+      *command_chunk = trim(*command_chunk);
+      command_chunk++;
+      args_num++;
+    };
   }
   if (args_num > 0) executeCommands(args, args_num, output_ptr);
   return NULL;
-};
-
-char *trim(char *s) {
-  while (isspace(*s)) s++;
-
-  if (*s == '\0') return s;
-
-  char *end = s + strlen(s) - 1;
-  while (end > s && isspace(*end)) end--;
-  end[1] = '\0';
-
-  return s;
 }
 
 void executeCommands(char *args[], int args_num, FILE *out) {
   if (builtInCommand(args, args_num)) return;
+
   char command_path[BUFF_SIZE];
   if (!searchPath(command_path, args[0])) {
     printError();
     return;
   }
+
   int pid = fork();
   if (pid == 0) {
     redirect(out);
-    if (execv(command_path, args)) printError();
+    if (execv(command_path, args) == -1) printError();
   } else if (pid > 0) {
     waitpid(pid, NULL, 0);
   } else {
@@ -138,55 +150,55 @@ void executeCommands(char *args[], int args_num, FILE *out) {
   }
 }
 
-void redirect(FILE *out) {
-  int filenoOut;
-  if ((filenoOut = fileno(out)) == -1) {
-    printError();
-    return;
-  }
-  if (filenoOut != STDOUT_FILENO) {
-    if (dup2(filenoOut, STDOUT_FILENO) != 0 || dup2(filenoOut, STDERR_FILENO) != 0){
-      printError();
-      return;
-    }
-    fclose(out);
-  }
-}
-
 int builtInCommand(char *args[], int args_num) {
   if (strcmp(args[0], "exit") == 0) {
-    clean();
-    exit(0);
+    if (args_num == 1) {
+      clean();
+      exit(EXIT_SUCCESS);
+    }
+    printError();
+    return 1;
   }
-
   if (strcmp(args[0], "cd") == 0) {
     if (args_num == 2) {
-      if (chdir(args[1]) != 0) printError();
+      if (chdir(trim(args[1])) != 0) printError();
     } else {
       printError();
     }
     return 1;
   }
-
   if (strcmp(args[0], "path") == 0) {
-    for (int i = 1; i < args_num; i++) {
-      if (path_ind < BUFF_SIZE) paths[path_ind++] = args[i];
+    char *temp[BUFF_SIZE] = { NULL };
+    *paths = *temp;
+    for (int i = 0; i < args_num - 1; i++) {
+      paths[i] = strdup(args[i + 1]);
+      paths[i + 1] = NULL;
     }
     return 1;
   }
-
   return 0;
 }
 
 int searchPath(char path[], char *firstArg) {
-  for (int i = 0; i <= path_ind; i++) {
-    snprintf(path, BUFF_SIZE, "%s/%s", paths[i], firstArg);
+  int i = 0;
+  while (paths[i] != NULL) {
+    snprintf(path, BUFF_SIZE, "%s/%s", paths[i++], firstArg);
     if (access(path, X_OK) == 0) return 1;
   }
   return 0;
 }
 
-void clean() {
-  free(buffer);
-  fclose(input_ptr);
+void redirect(FILE *out) {
+  int outFileno;
+  if ((outFileno = fileno(out)) == -1) {
+    printError();
+    return;
+  }
+  if (outFileno != STDOUT_FILENO) {
+    if (dup2(outFileno, STDOUT_FILENO) == -1 || dup2(outFileno, STDERR_FILENO) == -1) {
+      printError();
+      return;
+    }
+    fclose(out);
+  }
 }
