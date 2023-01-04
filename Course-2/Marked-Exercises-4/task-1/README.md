@@ -1,6 +1,6 @@
 # Marked Exercises 4
 
-## Task 1 - A dirty page is…
+## Question 1 - A dirty page is…
 
 - modified
 - corrupted
@@ -8,7 +8,7 @@
 
 **Correct answer:** modified
 
-## Task 3 - Fill in the comparison table about VMS and Linux
+## Question 2 - Fill in the comparison table about VMS and Linux
 
 | Aspect                  | VAX/VMS                    | Linux                         |
 |-------------------------|----------------------------|-------------------------------|
@@ -17,7 +17,7 @@
 | page replacement policy | FIFO with dirty/clean list | LRU with active/inactive list |
 
 
-## Task 2- The biggest difference between older and newer operating systems is…
+## Question 3- The biggest difference between older and newer operating systems is…
 
 
 - security

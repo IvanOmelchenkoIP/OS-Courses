@@ -31,7 +31,10 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
-		<Unit filename="main.c">
+		<Unit filename="UDPClient.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="UDPServer.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Extensions>

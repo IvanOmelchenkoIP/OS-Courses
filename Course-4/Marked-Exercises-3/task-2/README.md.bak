@@ -1,0 +1,62 @@
+# Marked Exercises 3
+
+## Task 1
+
+### Question 1 - Fill in the blanks to complete the statement below.
+
+A **File System Consistency Checker** is used by older Linux-based systems to find and repair inconsistencies. 
+This method is not perfect, as it may still have **inodes** pointing to **garbage data**.
+
+### Question 2 -  Fill in the blanks to match the FSCK consistency check with its description.
+
+- **Inode Link Checks**: FSCK counts and updates inode links. Unallocated inodes are moved to the lost and found directory.
+- **Duplicate Pointers**: FSCK checks for duplicate pointers. If two inodes point to the same data block, one can be erased.
+- **Free Block Checks**: FSCK scans inodes to check that blocks are tagged allocated or free.
+- **irectory Checks**: FSCK checks the directory format. They should start with . and ..
+- **Superblock Checks**: FSCK checks the file size against the number of blocks allocated. It looks for the questionable block and substitutes a copy.
+- **Bad Blocks**: A bad pointer points to an out-of-range memory address. FSCK then deletes the pointer.
+- **Inode State Checks**: FSCK checks inodes for corruption. Inodes that are corrupted are removed.
+
+## Task 2
+
+### Question 1 - The Log-Structured File System was created to address which of the following problems?
+
+- Inefficient reading and writing
+- File systems lacked RAID awareness
+- Increasing disk sizes
+- Frequent inode corruption
+
+**Answer:**
+
+- Inefficient reading and writing
+- File systems lacked RAID awareness
+- Increasing disk sizes
+
+### Question 2 - Match the following LFS implementation data structures with their descriptions.
+
+- **Segment Usage Table**: shows how much data is on each block.
+- **Inode Map**: This shows where each inode on the disk is located. This is written directly into the segment.
+- **Segment Summary**: This keeps track of the details for each block in the segment.
+- **Inodes**: These carry physical block pointers to files.
+
+## Task 3
+
+### Question 1 - Fill in the blanks to complete the statement below.
+
+**Solid-state storage devices** have **transistors** instead of moving parts. They can retain information in the event of a power outage. 
+**Flash chips** can store bits in a transistor. These are grouped into **banks** composed of several cells.
+
+### Question 2 - Which of the following low-level operations are supported by flash operations?
+
+- Erase
+- Program
+- Write
+- Read
+- Copy
+- Close
+
+**Answer:**
+
+- Erase
+- Program
+- Read
